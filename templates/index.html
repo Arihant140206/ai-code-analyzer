@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html data-theme="dark">
+<head>
+    <title>AI Code Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        [data-theme="dark"] {
+            --bg: #0d1117;
+            --surface: #161b22;
+            --surface2: #1c2330;
+            --border: #263046;
+            --accent: #58a6ff;
+            --accent-dim: rgba(88,166,255,0.1);
+            --green: #3fb950;
+            --red: #f85149;
+            --yellow: #d29922;
+            --text: #e6edf3;
+            --text2: #8b949e;
+            --text3: #3d444d;
+            --shadow: 0 1px 4px rgba(0,0,0,0.5);
+        }
+        [data-theme="light"] {
+            --bg: #f4f6f8;
+            --surface: #ffffff;
+            --surface2: #f0f2f5;
+            --border: #d0d7de;
+            --accent: #0969da;
+            --accent-dim: rgba(9,105,218,0.08);
+            --green: #1a7f37;
+            --red: #cf222e;
+            --yellow: #9a6700;
+            --text: #1f2328;
+            --text2: #57606a;
+            --text3: #c9cdd2;
+            --shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Space Mono', monospace;
+            background: var(--bg);
+            color: var(--text);
+            font-size: 13px;
+            min-height: 100vh;
+            transition: background 0.2s, color 0.2s;
+        }
+
+        /* Nav */
+        nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 24px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            box-shadow: var(--shadow);
+        }
+
+        .nav-logo { font-size: 14px; font-weight: 700; }
+        .nav-logo span { color: var(--accent); }
+
+        .theme-btn {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            padding: 5px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            color: var(--text2);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .theme-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* Layout */
+        .wrapper { max-width: 940px; margin: 0 auto; padding: 24px 18px 60px; }
+
+        /* Card */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 8px;
+            padding: 10px 16px;
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .card-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text2);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .card-body { padding: 18px; }
+
+        /* Toolbar */
+        .toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+        select {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            background: var(--surface2);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 5px 10px;
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.15s;
+        }
+        select:focus { border-color: var(--accent); }
+
+        /* Counter chips */
+        .counters { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+
+        .chip {
+            font-size: 11px;
+            color: var(--text2);
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 5px;
+            padding: 3px 9px;
+        }
+        .chip b { color: var(--text); font-weight: 700; }
+
+        /* Syntax hint strip */
+        .syntax-strip {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 16px;
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .strip-label { font-size: 10px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; margin-right: 2px; }
+
+        .stag {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid;
+        }
+
+        /* dark */
+        .stag-kw  { color: #c792ea; border-color: rgba(199,146,234,0.35); background: rgba(199,146,234,0.07); }
+        .stag-fn  { color: #82aaff; border-color: rgba(130,170,255,0.35); background: rgba(130,170,255,0.07); }
+        .stag-str { color: #c3e88d; border-color: rgba(195,232,141,0.35); background: rgba(195,232,141,0.07); }
+        .stag-num { color: #f78c6c; border-color: rgba(247,140,108,0.35); background: rgba(247,140,108,0.07); }
+        .stag-cmt { color: var(--text2); border-color: var(--border); background: transparent; font-style: italic; }
+
+        /* light overrides */
+        [data-theme="light"] .stag-kw  { color: #7c3aed; border-color: rgba(124,58,237,0.3); background: rgba(124,58,237,0.06); }
+        [data-theme="light"] .stag-fn  { color: #0550ae; border-color: rgba(5,80,174,0.3); background: rgba(5,80,174,0.06); }
+        [data-theme="light"] .stag-str { color: #1a7f37; border-color: rgba(26,127,55,0.3); background: rgba(26,127,55,0.06); }
+        [data-theme="light"] .stag-num { color: #bc4c00; border-color: rgba(188,76,0,0.3); background: rgba(188,76,0,0.06); }
+
+        /* Editor */
+        .editor-chrome {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+        .editor-chrome:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+
+        .editor-topbar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            background: var(--surface2);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .dot { width: 10px; height: 10px; border-radius: 50%; }
+        .dot-r { background: #f85149; }
+        .dot-y { background: #d29922; }
+        .dot-g { background: #3fb950; }
+        .editor-lang { margin-left: auto; font-size: 11px; color: var(--text2); }
+
+        textarea {
+            width: 100%;
+            height: 210px;
+            padding: 14px 16px;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Space Mono', monospace;
+            font-size: 13px;
+            line-height: 1.75;
+            border: none;
+            outline: none;
+            resize: vertical;
+            display: block;
+            transition: background 0.2s;
+        }
+        textarea::placeholder { color: var(--text3); }
+
+        /* Buttons */
+        .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+        .btn {
+            font-family: 'Space Mono', monospace;
+            font-size: 12px;
+            border-radius: 6px;
+            padding: 7px 15px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+            outline: none;
+        }
+        .btn-primary { background: var(--accent); color: #fff; font-weight: 700; border-color: var(--accent); }
+        .btn-primary:hover { opacity: 0.85; transform: translateY(-1px); }
+        .btn-outline { background: transparent; color: var(--text2); border-color: var(--border); }
+        .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+
+        /* Samples */
+        .samples-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+        .samples-label { font-size: 11px; color: var(--text2); }
+
+        .sample-btn {
+            font-family: 'Space Mono', monospace;
+            font-size: 11px;
+            padding: 4px 10px;
+            border-radius: 5px;
+            border: 1px solid var(--border);
+            background: var(--surface2);
+            color: var(--text2);
+            cursor: pointer;
+            transition: all 0.12s;
+        }
+        .sample-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+
+        /* Result */
+        #result { margin-top: 20px; display: none; }
+        #result.visible { display: block; }
+
+        .section-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+        .section-row span { font-size: 11px; color: var(--text2); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
+        .section-row hr { flex: 1; border: none; border-top: 1px solid var(--border); }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        @media (max-width: 560px) { .result-grid { grid-template-columns: repeat(2,1fr); } }
+
+        .stat-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+        }
+        .stat-label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+        .stat-value { font-size: 22px; font-weight: 700; color: var(--accent); }
+        .stat-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+        .quality-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+
+        .quality-card {
+            flex: 2;
+            min-width: 170px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+        }
+        .q-label { font-size: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+        .q-score { font-size: 30px; font-weight: 700; }
+
+        .q-badge {
+            display: inline-block;
+            font-size: 11px;
+            padding: 2px 9px;
+            border-radius: 4px;
+            border: 1px solid;
+            margin-top: 8px;
+        }
+
+        .progress-track { background: var(--border); border-radius: 99px; height: 5px; margin-top: 12px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 99px; transition: width 0.7s ease; }
+
+        .risk-card {
+            flex: 1;
+            min-width: 130px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 5px;
+        }
+
+        .risk-icon {
+            font-size: 24px;
+            width: 46px; height: 46px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .risk-icon-hi { background: rgba(248,81,73,0.12); }
+        .risk-icon-lo { background: rgba(63,185,80,0.12); }
+        .risk-text { font-size: 13px; font-weight: 700; }
+
+        .suggestions-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+        }
+
+        .suggestion-item {
+            display: flex;
+            gap: 8px;
+            align-items: flex-start;
+            padding: 7px 0;
+            border-bottom: 1px solid var(--border);
+            color: var(--text2);
+            font-size: 12px;
+            line-height: 1.6;
+        }
+        .suggestion-item:last-child { border-bottom: none; padding-bottom: 0; }
+        .si-arr { color: var(--accent); flex-shrink: 0; }
+
+        .copy-result-row { display: flex; justify-content: flex-end; }
+
+        /* Loader */
+        .loader {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 28px;
+            color: var(--text2);
+            font-size: 12px;
+        }
+        .spinner {
+            width: 15px; height: 15px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Info */
+        .info-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+        @media (max-width: 600px) { .info-grid { grid-template-columns: 1fr; } }
+
+        .info-block {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+        }
+        .info-block h4 { font-size: 12px; font-weight: 700; color: var(--accent); margin-bottom: 7px; }
+        .info-block p, .info-block li { font-size: 12px; color: var(--text2); line-height: 1.7; }
+        .info-block ul { padding-left: 15px; }
+        .info-block li { margin-bottom: 2px; }
+
+        hr.div { border: none; border-top: 1px solid var(--border); margin: 14px 0; }
+
+        /* Toast */
+        #toast {
+            position: fixed;
+            bottom: 22px; right: 22px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text);
+            border-radius: 7px;
+            padding: 9px 15px;
+            font-size: 12px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+            opacity: 0;
+            transform: translateY(6px);
+            transition: all 0.2s;
+            pointer-events: none;
+            z-index: 999;
+        }
+        #toast.show { opacity: 1; transform: translateY(0); }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="nav-logo">⚡ <span>AI</span> Code Analyzer</div>
+    <button class="theme-btn" id="themeBtn" onclick="toggleTheme()">☀️ Light</button>
+</nav>
+
+<div class="wrapper">
+
+    <!-- Editor card -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">Code Input</span>
+            <div class="toolbar">
+                <select id="language" onchange="onLangChange()">
+                    <option>Python</option>
+                    <option>C++</option>
+                    <option>Java</option>
+                    <option>JavaScript</option>
+                </select>
+                <div class="counters">
+                    <div class="chip" id="lineCount"><b>0</b> lines</div>
+                    <div class="chip" id="charCount"><b>0</b> chars</div>
+                    <div class="chip" id="kwCount"><b>0</b> keywords</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Syntax hint strip -->
+        <div class="syntax-strip">
+            <span class="strip-label">syntax</span>
+            <span class="stag stag-kw"  id="hintKw">keywords</span>
+            <span class="stag stag-fn"  id="hintFn">functions</span>
+            <span class="stag stag-str" id="hintStr">strings</span>
+            <span class="stag stag-num" id="hintNum">numbers</span>
+            <span class="stag stag-cmt" id="hintCmt">comments</span>
+        </div>
+
+        <div class="card-body">
+            <div class="editor-chrome">
+                <div class="editor-topbar">
+                    <div class="dot dot-r"></div>
+                    <div class="dot dot-y"></div>
+                    <div class="dot dot-g"></div>
+                    <span class="editor-lang" id="editorLang">python</span>
+                </div>
+                <textarea id="codeInput" placeholder="# paste your code here..."></textarea>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-primary" onclick="analyzeCode()">▶ Analyze</button>
+                <button class="btn btn-outline" onclick="resetCode()">✕ Reset</button>
+                <button class="btn btn-outline" onclick="copyCode()">⎘ Copy Code</button>
+            </div>
+
+            <div class="samples-row">
+                <span class="samples-label">Samples:</span>
+                <button class="sample-btn" onclick="loadSample(1)">Hello World</button>
+                <button class="sample-btn" onclick="loadSample(2)">Single Loop</button>
+                <button class="sample-btn" onclick="loadSample(3)">Loop + If</button>
+                <button class="sample-btn" onclick="loadSample(4)">O(n²)</button>
+                <button class="sample-btn" onclick="loadSample(5)">O(n³)</button>
+                <button class="sample-btn" onclick="loadSample(6)">Nested Mix</button>
+                <button class="sample-btn" onclick="loadSample(7)">3× Loops</button>
+                <button class="sample-btn" onclick="loadSample(8)">Simple Ops</button>
+            </div>
+
+            <div id="result"></div>
+        </div>
+    </div>
+
+    <!-- Info card -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">📘 About This Tool</span>
+        </div>
+        <div class="card-body">
+            <div class="info-grid">
+                <div class="info-block">
+                    <h4>Time Complexity</h4>
+                    <p>Measures how efficiency scales as input grows — from O(1) constant to O(n³) for deeply nested loops.</p>
+                </div>
+                <div class="info-block">
+                    <h4>Code Quality</h4>
+                    <p>Clean, structured code improves readability and reduces hidden bugs in production.</p>
+                </div>
+                <div class="info-block">
+                    <h4>Risk Detection</h4>
+                    <p>Flags inefficient patterns like deep nesting or heavy branching that can hurt performance.</p>
+                </div>
+            </div>
+            <hr class="div">
+            <div class="info-grid">
+                <div class="info-block">
+                    <h4>💡 Tips</h4>
+                    <ul>
+                        <li>Avoid deep nested loops</li>
+                        <li>Break large functions up</li>
+                        <li>Use efficient data structures</li>
+                    </ul>
+                </div>
+                <div class="info-block" style="grid-column: span 2">
+                    <h4>🚀 Why Use This?</h4>
+                    <p>Paste any code snippet to instantly get a complexity estimate, quality score, risk level, and actionable suggestions — powered by AI.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+// Theme
+function toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+    document.getElementById('themeBtn').textContent = isDark ? '🌙 Dark' : '☀️ Light';
+}
+
+// Keywords per language
+const KEYWORDS = {
+    Python:     ['for','if','else','elif','while','def','class','return','import','from','in','not','and','or','print','range','True','False','None','with','as','try','except'],
+    'C++':      ['for','if','else','while','int','float','double','void','return','include','using','namespace','std','class','struct','true','false','nullptr','auto','const'],
+    Java:       ['for','if','else','while','int','float','double','void','return','import','class','new','true','false','null','static','public','private','protected','extends'],
+    JavaScript: ['for','if','else','while','function','const','let','var','return','import','export','class','new','true','false','null','undefined','async','await','typeof']
+};
+
+// Syntax hints per language
+const HINTS = {
+    Python:     { kw:'for, def, if',    fn:'print(), range()', str:'"string"',  num:'42, 3.14',  cmt:'# comment' },
+    'C++':      { kw:'int, void, for',  fn:'cout, cin',         str:'"string"',  num:'42, 3.14f', cmt:'// comment' },
+    Java:       { kw:'int, void, for',  fn:'System.out.print()',str:'"string"',  num:'42, 3.14',  cmt:'// comment' },
+    JavaScript: { kw:'const, let, for', fn:'console.log()',     str:'"string"',  num:'42, 3.14',  cmt:'// comment' }
+};
+
+const codeInput = document.getElementById('codeInput');
+
+function updateCounters() {
+    const val = codeInput.value;
+    const lines = val ? val.split('\n').length : 0;
+    const chars = val.length;
+    const lang = document.getElementById('language').value;
+    const kws = KEYWORDS[lang] || [];
+    const kwCount = val.split(/\W+/).filter(w => kws.includes(w)).length;
+    document.getElementById('lineCount').innerHTML = `<b>${lines}</b> lines`;
+    document.getElementById('charCount').innerHTML = `<b>${chars}</b> chars`;
+    document.getElementById('kwCount').innerHTML   = `<b>${kwCount}</b> keywords`;
+}
+
+function updateSyntaxStrip() {
+    const h = HINTS[document.getElementById('language').value] || HINTS.Python;
+    document.getElementById('hintKw').textContent  = h.kw;
+    document.getElementById('hintFn').textContent  = h.fn;
+    document.getElementById('hintStr').textContent = h.str;
+    document.getElementById('hintNum').textContent = h.num;
+    document.getElementById('hintCmt').textContent = h.cmt;
+}
+
+function onLangChange() {
+    document.getElementById('editorLang').textContent = document.getElementById('language').value.toLowerCase();
+    updateSyntaxStrip();
+    updateCounters();
+}
+
+codeInput.addEventListener('input', updateCounters);
+
+// Toast
+function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function copyCode() {
+    codeInput.select();
+    document.execCommand('copy');
+    showToast('✓ Code copied!');
+}
+
+function resetCode() {
+    codeInput.value = '';
+    updateCounters();
+    const r = document.getElementById('result');
+    r.innerHTML = '';
+    r.classList.remove('visible');
+}
+
+function loadSample(num) {
+    const samples = {
+        1: `print("Hello World")`,
+        2: `for i in range(5):\n    print(i)`,
+        3: `for i in range(5):\n    if i % 2 == 0:\n        print(i)`,
+        4: `for i in range(5):\n    for j in range(5):\n        print(i, j)`,
+        5: `for i in range(5):\n    for j in range(5):\n        for k in range(5):\n            print(i, j, k)`,
+        6: `for i in range(5):\n    for j in range(5):\n        if i > j:\n            for k in range(5):\n                if k % 2 == 0:\n                    print(i, j, k)`,
+        7: `for i in range(5):\n    print(i)\n\nfor j in range(5):\n    print(j)\n\nfor k in range(5):\n    print(k)`,
+        8: `x = 10\ny = 20\nz = x + y\nprint(z)`
+    };
+    codeInput.value = samples[num];
+    updateCounters();
+}
+
+// Copy result as plain text
+function copyResult(text) {
+    const el = document.createElement('textarea');
+    el.value = text;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    showToast('✓ Result copied!');
+}
+
+// Analyze
+async function analyzeCode() {
+    const code = codeInput.value;
+    const result = document.getElementById('result');
+
+    result.innerHTML = `<div class="loader"><div class="spinner"></div> Analyzing…</div>`;
+    result.classList.add('visible');
+
+    const response = await fetch('/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code })
+    });
+
+    const data = await response.json();
+
+    const riskHigh = data.risk === 'HIGH';
+    const qualityLabel = data.quality_score > 7 ? 'Excellent' : data.quality_score > 5 ? 'Good' : 'Needs Work';
+    const qualityColor = data.quality_score > 7 ? 'var(--green)' : data.quality_score > 5 ? 'var(--yellow)' : 'var(--red)';
+    const complexity   = data.features.depth >= 2 ? 'O(n²)' : data.features.loops >= 1 ? 'O(n)' : 'O(1)';
+
+    const suggestions = data.suggestions.length > 0 ? data.suggestions : ['Code looks good!'];
+    const suggestionsHTML = suggestions.map(s => `<div class="suggestion-item"><span class="si-arr">→</span><span>${s}</span></div>`).join('');
+
+    const plainText = [
+        '=== AI Code Analyzer Report ===',
+        `Complexity : ${complexity}`,
+        `Lines      : ${data.features.lines}`,
+        `Loops      : ${data.features.loops}`,
+        `Depth      : ${data.features.depth}`,
+        `Quality    : ${data.quality_score}/10 (${qualityLabel})`,
+        `Risk       : ${data.risk}`,
+        '',
+        'Suggestions:',
+        ...suggestions.map(s => `- ${s}`)
+    ].join('\n');
+
+    result.innerHTML = `
+        <div class="section-row"><span>Analysis Report</span><hr></div>
+
+        <div class="result-grid">
+            <div class="stat-card">
+                <div class="stat-label">Complexity</div>
+                <div class="stat-value">${complexity}</div>
+                <div class="stat-sub">time complexity</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Lines</div>
+                <div class="stat-value">${data.features.lines}</div>
+                <div class="stat-sub">total lines</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Loops</div>
+                <div class="stat-value">${data.features.loops}</div>
+                <div class="stat-sub">detected</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Depth</div>
+                <div class="stat-value">${data.features.depth}</div>
+                <div class="stat-sub">nesting</div>
+            </div>
+        </div>
+
+        <div class="quality-row">
+            <div class="quality-card">
+                <div class="q-label">Quality Score</div>
+                <div class="q-score" style="color:${qualityColor}">${data.quality_score}<span style="font-size:15px;color:var(--text2)">/10</span></div>
+                <div class="q-badge" style="color:${qualityColor};border-color:${qualityColor}">${qualityLabel}</div>
+                <div class="progress-track">
+                    <div class="progress-fill" style="width:${data.quality_score*10}%;background:${qualityColor}"></div>
+                </div>
+            </div>
+            <div class="risk-card">
+                <div class="risk-icon ${riskHigh ? 'risk-icon-hi' : 'risk-icon-lo'}">${riskHigh ? '⚠️' : '✅'}</div>
+                <div class="q-label">Risk Level</div>
+                <div class="risk-text" style="color:${riskHigh ? 'var(--red)' : 'var(--green)'}">${riskHigh ? 'High Risk' : 'Safe'}</div>
+            </div>
+        </div>
+
+        <div class="suggestions-card">
+            <div class="q-label" style="margin-bottom:6px">Suggestions</div>
+            ${suggestionsHTML}
+        </div>
+
+        <div class="copy-result-row">
+            <button class="btn btn-outline" onclick='copyResult(${JSON.stringify(plainText)})'>⎘ Copy Result</button>
+        </div>
+    `;
+}
+
+// Init
+updateSyntaxStrip();
+updateCounters();
+</script>
+</body>
+</html>
